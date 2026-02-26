@@ -1,0 +1,7 @@
+bin/*.exe
+bin/*.pdb
+tests/*.exe
+tests/*.pdb
+.vs/
+*.user
+__pycache__/
