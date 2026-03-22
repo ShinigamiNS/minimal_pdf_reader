@@ -1,949 +1,822 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
 using System.IO;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Security;
+using System.Windows.Forms;
 
-// --- Native Wrapper ---
+// ════════════════════════════════════════════════════════════════════════════════
+//  Native bindings
+// ════════════════════════════════════════════════════════════════════════════════
 public static class PdfNative
 {
-    [DllImport("user32.dll")] 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern IntPtr LoadLibraryW(string lpFileName);
+
+    [DllImport("user32.dll")]
     public static extern bool SetProcessDPIAware();
 
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDF_InitLibrary();
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDF_DestroyLibrary();
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr FPDF_LoadDocument(string path, string password);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDF_CloseDocument(IntPtr document);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern int FPDF_GetPageCount(IntPtr document);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr FPDF_LoadPage(IntPtr document, int page_index);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDF_ClosePage(IntPtr page);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern double FPDF_GetPageWidth(IntPtr page);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern double FPDF_GetPageHeight(IntPtr page);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr FPDFBitmap_Create(int width, int height, int alpha);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDFBitmap_FillRect(IntPtr bitmap, int left, int top, int width, int height, int color);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDFBitmap_Destroy(IntPtr bitmap);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr FPDFBitmap_GetBuffer(IntPtr bitmap);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern int FPDFBitmap_GetStride(IntPtr bitmap);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDF_RenderPageBitmap(IntPtr bitmap, IntPtr page, int start_x, int start_y, int size_x, int size_y, int rotate, int flags);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern uint FPDF_GetLastError();
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr FPDFText_LoadPage(IntPtr page);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDFText_ClosePage(IntPtr text_page);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern int FPDFText_GetCharIndexAtPos(IntPtr text_page, double x, double y, double xTolerance, double yTolerance);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern int FPDFText_GetText(IntPtr text_page, int start_index, int count, byte[] result);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern int FPDFText_CountRects(IntPtr text_page, int start_index, int count);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern bool FPDFText_GetRect(IntPtr text_page, int rect_index, out double left, out double top, out double right, out double bottom);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDF_DeviceToPage(IntPtr page, int start_x, int start_y, int size_x, int size_y, int rotate, int device_x, int device_y, out double page_x, out double page_y);
-
-    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void FPDF_PageToDevice(IntPtr page, int start_x, int start_y, int size_x, int size_y, int rotate, double page_x, double page_y, out int device_x, out int device_y);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDF_InitLibrary();
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDF_DestroyLibrary();
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr FPDF_LoadDocument(string path, string password);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDF_CloseDocument(IntPtr doc);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern int FPDF_GetPageCount(IntPtr doc);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr FPDF_LoadPage(IntPtr doc, int index);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDF_ClosePage(IntPtr page);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern double FPDF_GetPageWidth(IntPtr page);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern double FPDF_GetPageHeight(IntPtr page);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr FPDFBitmap_Create(int w, int h, int alpha);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDFBitmap_FillRect(IntPtr bmp, int l, int t, int w, int h, int color);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDFBitmap_Destroy(IntPtr bmp);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr FPDFBitmap_GetBuffer(IntPtr bmp);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern int FPDFBitmap_GetStride(IntPtr bmp);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDF_RenderPageBitmap(IntPtr bmp, IntPtr page, int x, int y, int w, int h, int rot, int flags);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern uint FPDF_GetLastError();
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr FPDFText_LoadPage(IntPtr page);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDFText_ClosePage(IntPtr tp);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern int FPDFText_GetCharIndexAtPos(IntPtr tp, double x, double y, double xt, double yt);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern int FPDFText_GetText(IntPtr tp, int start, int count, byte[] buf);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern int FPDFText_CountRects(IntPtr tp, int start, int count);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern bool FPDFText_GetRect(IntPtr tp, int idx, out double l, out double t, out double r, out double b);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDF_DeviceToPage(IntPtr page, int sx, int sy, int sw, int sh, int rot, int dx, int dy, out double px, out double py);
+    [DllImport("pdfium.dll", CallingConvention = CallingConvention.Cdecl)] public static extern void FPDF_PageToDevice(IntPtr page, int sx, int sy, int sw, int sh, int rot, double px, double py, out int dx, out int dy);
 }
 
-public class RoundButton : Button
+// ════════════════════════════════════════════════════════════════════════════════
+//  Theme
+// ════════════════════════════════════════════════════════════════════════════════
+public static class T
 {
-    protected override void OnResize(EventArgs e)
+    public static bool Dark = true;
+
+    static Color D(int r, int g, int b) { return Color.FromArgb(r, g, b); }
+
+    public static Color Bg     { get { return Dark ? D(30, 30, 30)    : D(255, 255, 255); } }
+    public static Color Bar    { get { return Dark ? D(45, 45, 48)    : D(243, 243, 243); } }
+    public static Color TabBg  { get { return Dark ? D(37, 37, 38)    : D(222, 222, 222); } }
+    public static Color TabOn  { get { return Dark ? D(30, 30, 30)    : D(255, 255, 255); } }
+    public static Color TabOff { get { return Dark ? D(45, 45, 48)    : D(200, 200, 200); } }
+    public static Color TabHov { get { return Dark ? D(55, 55, 58)    : D(235, 235, 235); } }
+    public static Color Accent { get { return Dark ? D(0, 122, 204)   : D(0, 95, 184);   } }
+    public static Color Canvas { get { return Dark ? D(60, 60, 60)    : D(208, 208, 208); } }
+    public static Color Txt    { get { return Dark ? D(204, 204, 204) : D(60, 60, 60);   } }
+    public static Color TxtBrt { get { return Dark ? D(255, 255, 255) : D(0, 0, 0);      } }
+    public static Color BtnHov { get { return Dark ? D(74, 74, 74)    : D(224, 224, 224); } }
+    public static Color BtnPrs { get { return Dark ? D(90, 90, 90)    : D(200, 200, 200); } }
+    public static Color StatBg { get { return Dark ? D(0, 100, 168)   : D(0, 95, 184);   } }
+    public static Color XHov   { get { return D(196, 43, 28); } }
+    public static Color Sep    { get { return Dark ? D(68, 68, 68)    : D(200, 200, 200); } }
+
+    static Font _uiFont, _uiBig;
+    public static Font UiFont { get { if (_uiFont == null) _uiFont = new Font("Segoe UI", 9f);  return _uiFont; } }
+    public static Font UiBig  { get { if (_uiBig  == null) _uiBig  = new Font("Segoe UI", 10f); return _uiBig;  } }
+
+    public static void Reset() { _uiFont = _uiBig = null; }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  Flat button with hover / press
+// ════════════════════════════════════════════════════════════════════════════════
+public class FlatBtn : Control
+{
+    bool _hov, _prs;
+    public bool Accent;
+    public bool Toggled;
+
+    public FlatBtn(string text, int w = 72, int h = 30)
     {
-        base.OnResize(e);
-        using (System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath())
+        Text = text; Size = new Size(w, h);
+        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
+        Cursor = Cursors.Hand; Font = T.UiBig;
+    }
+
+    protected override void OnMouseEnter(EventArgs e) { _hov = true;  Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { _hov = _prs = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { _prs = true; Invalidate(); } base.OnMouseDown(e); }
+    protected override void OnMouseUp(MouseEventArgs e)   { _prs = false; Invalidate(); base.OnMouseUp(e); }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        Color bg = (Accent || Toggled) ? T.Accent
+                 : _prs ? T.BtnPrs
+                 : _hov ? T.BtnHov
+                 : T.Bar;
+        g.Clear(bg);
+        // Subtle border on light theme
+        if (!T.Dark)
+            using (var p = new Pen(T.Sep)) g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+        TextRenderer.DrawText(g, Text, Font, ClientRectangle, (Accent || Toggled) ? Color.White : T.TxtBrt,
+            TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter | TextFormatFlags.SingleLine);
+    }
+
+    public void Refresh2() { Font = T.UiFont; Invalidate(); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  Vertical separator
+// ════════════════════════════════════════════════════════════════════════════════
+public class VSep : Control
+{
+    public VSep() { Size = new Size(12, 40); SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true); }
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        using (var p = new Pen(T.Sep)) e.Graphics.DrawLine(p, 5, 4, 5, Height - 4);
+    }
+    public void Refresh2() { Invalidate(); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  Chrome-style tab control with close buttons
+// ════════════════════════════════════════════════════════════════════════════════
+public class ChromeTabs : TabControl
+{
+    int _xHov = -1, _tabHov = -1;
+    const int TAB_H = 46, CLOSE = 16, TAB_W = 252;
+
+    public ChromeTabs()
+    {
+        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.AllPaintingInWmPaint, true);
+        ItemSize = new Size(TAB_W, TAB_H);
+        SizeMode = TabSizeMode.Fixed;
+        Font = T.UiBig;
+    }
+
+    Rectangle XRect(Rectangle r) { return new Rectangle(r.Right - CLOSE - 7, r.Top + (r.Height - CLOSE) / 2, CLOSE, CLOSE); }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(T.TabBg);
+
+        for (int i = 0; i < TabCount; i++)
         {
-            path.AddEllipse(new Rectangle(0, 0, this.Width, this.Height));
-            this.Region = new Region(path);
+            var r = GetTabRect(i);
+            bool sel  = (SelectedIndex == i);
+            bool hov  = (_tabHov == i);
+            bool xhov = (_xHov == i);
+
+            Color bg = sel ? T.TabOn : hov ? T.TabHov : T.TabOff;
+            using (var b = new SolidBrush(bg)) g.FillRectangle(b, r);
+
+            if (sel)
+                using (var p = new Pen(T.Accent, 2))
+                    g.DrawLine(p, r.Left + 1, r.Bottom - 1, r.Right - 1, r.Bottom - 1);
+
+            // Title
+            var tr = new Rectangle(r.Left + 10, r.Top, r.Width - CLOSE - 22, r.Height);
+            TextRenderer.DrawText(g, TabPages[i].Text, Font, tr,
+                sel ? T.TxtBrt : T.Txt,
+                TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+
+            // Close X
+            if (sel || hov)
+            {
+                var cr = XRect(r);
+                if (xhov)
+                    using (var b = new SolidBrush(T.XHov))
+                        g.FillEllipse(b, cr.Left - 3, cr.Top - 3, cr.Width + 6, cr.Height + 6);
+                using (var p = new Pen(xhov ? Color.White : T.Txt, 1.5f))
+                {
+                    g.DrawLine(p, cr.Left + 2, cr.Top + 2, cr.Right - 2, cr.Bottom - 2);
+                    g.DrawLine(p, cr.Right - 2, cr.Top + 2, cr.Left + 2, cr.Bottom - 2);
+                }
+            }
         }
     }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        int px = _xHov, ph = _tabHov;
+        _xHov = _tabHov = -1;
+        for (int i = 0; i < TabCount; i++)
+        {
+            var r = GetTabRect(i);
+            if (r.Contains(e.Location))
+            {
+                _tabHov = i;
+                if (XRect(r).Contains(e.Location)) _xHov = i;
+                break;
+            }
+        }
+        if (_xHov != px || _tabHov != ph) Invalidate();
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        _xHov = _tabHov = -1; Invalidate();
+    }
+
+    protected override void OnMouseClick(MouseEventArgs e)
+    {
+        for (int i = 0; i < TabCount; i++)
+            if (XRect(GetTabRect(i)).Contains(e.Location)) { RequestClose(i); return; }
+        base.OnMouseClick(e);
+    }
+
+    public void RequestClose(int i)
+    {
+        if (i < 0 || i >= TabCount) return;
+        var page = TabPages[i];
+        foreach (Control c in page.Controls)
+        { PdfViewer pv = c as PdfViewer; if (pv != null) pv.Dispose(); }
+        TabPages.RemoveAt(i);
+        Invalidate();
+    }
+
+    public void ApplyTheme() { Font = T.UiFont; Invalidate(); }
 }
 
-// --- Individual PDF View Control ---
+// ════════════════════════════════════════════════════════════════════════════════
+//  PDF viewer (canvas only — toolbar lives in the main form)
+// ════════════════════════════════════════════════════════════════════════════════
 public class PdfViewer : UserControl
 {
-    private IntPtr _doc = IntPtr.Zero;
-    private int _pageCount = 0;
-    private int _currentPage = 0;
-    private float _zoomLevel = 1.0f;
-    private IntPtr _currentPdfBitmap = IntPtr.Zero;
-    private IntPtr _currentPdfPage = IntPtr.Zero;
-    private IntPtr _currentTextPage = IntPtr.Zero;
-    
-    // Selection
-    private int _selStartIndex = -1;
-    private int _selEndIndex = -1;
-    private bool _isSelecting = false;
-    private bool _isDarkMode = false;
-    private Timer _resizeTimer;
+    IntPtr _doc = IntPtr.Zero, _page = IntPtr.Zero, _textPage = IntPtr.Zero, _pdfBmp = IntPtr.Zero;
+    int _pageCount, _currentPage;
+    float _zoom = 1.0f;
+    bool _selecting;
+    int _selStart = -1, _selEnd = -1;
+    Timer _resizeTimer;
+    Panel _scroll;
+    PictureBox _canvas;
 
-    public bool IsDarkMode
-    {
-        get { return _isDarkMode; }
-        set {
-            _isDarkMode = value;
-            ApplyTheme();
-            if (_currentPage >= 0) ShowPage(_currentPage);
-        }
-    }
+    public event EventHandler StateChanged;
+
+    public int   CurrentPage { get { return _currentPage; } }
+    public int   PageCount   { get { return _pageCount; } }
+    public float ZoomLevel   { get { return _zoom; } }
+    public bool  HasDoc      { get { return _doc != IntPtr.Zero; } }
 
     public event EventHandler LoadFailed;
 
-    // UI Elements
-    private Panel _toolbar;
-    private Button _btnPrev;
-    private Button _btnNext;
-    private Button _btnZoomIn;
-    private Button _btnZoomOut;
-    private Label _lblPage;
-    private Panel _canvasPanel;
-    private PictureBox _canvas;
-
     public PdfViewer()
     {
-        InitializeUI();
+        Dock = DockStyle.Fill;
+        SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+        BuildUI();
     }
 
-    private void InitializeUI()
+    void BuildUI()
     {
-        // Dock setting
-        this.Dock = DockStyle.Fill;
-
-        Font largeFont = new Font(Control.DefaultFont.FontFamily, Control.DefaultFont.Size * 3);
-        Font mediumFont = new Font(Control.DefaultFont.FontFamily, Control.DefaultFont.Size * 1.5f);
-
-        _toolbar = new Panel { Dock = DockStyle.Top, Height = 70 };
-        
-        FlowLayoutPanel centerPanel = new FlowLayoutPanel {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            WrapContents = false,
-            Anchor = AnchorStyles.None,
-            BackColor = Color.Transparent
-        };
-
-        _btnZoomOut = new RoundButton { Text = "-", Size = new Size(50, 50), Font = mediumFont, Margin = new Padding(10, 15, 10, 10), FlatStyle = FlatStyle.Flat };
-        _btnZoomOut.FlatAppearance.BorderSize = 0;
-        
-        _btnPrev = new Button { Text = "< Prev", Width = 200, Height = 50, Enabled = false, Font = mediumFont, Margin = new Padding(10, 15, 10, 10) };
-        _lblPage = new Label { Text = "0 / 0", Width = 250, Height = 50, TextAlign = ContentAlignment.MiddleCenter, Font = mediumFont, Margin = new Padding(10, 15, 10, 10) };
-        _btnNext = new Button { Text = "Next >", Width = 200, Height = 50, Enabled = false, Font = mediumFont, Margin = new Padding(10, 15, 10, 10) };
-
-        _btnZoomIn = new RoundButton { Text = "+", Size = new Size(50, 50), Font = mediumFont, Margin = new Padding(10, 15, 10, 10), FlatStyle = FlatStyle.Flat };
-        _btnZoomIn.FlatAppearance.BorderSize = 0;
-
-        _btnPrev.Click += (s, e) => PrevPage();
-        _btnNext.Click += (s, e) => NextPage();
-        _btnZoomOut.Click += (s, e) => { _zoomLevel = Math.Max(0.2f, _zoomLevel - 0.2f); ShowPage(_currentPage); };
-        _btnZoomIn.Click += (s, e) => { _zoomLevel = Math.Min(5.0f, _zoomLevel + 0.2f); ShowPage(_currentPage); };
-
-        centerPanel.Controls.Add(_btnZoomOut);
-        centerPanel.Controls.Add(_btnPrev);
-        centerPanel.Controls.Add(_lblPage);
-        centerPanel.Controls.Add(_btnNext);
-        centerPanel.Controls.Add(_btnZoomIn);
-
-        _toolbar.Controls.Add(centerPanel);
-        _toolbar.Resize += (s, e) => {
-            if (_toolbar.Width > 0 && centerPanel.Width > 0)
-            {
-                centerPanel.Left = (_toolbar.Width - centerPanel.Width) / 2;
-                centerPanel.Top = (_toolbar.Height - centerPanel.Height) / 2;
-            }
-        };
-
-        _canvasPanel = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        _scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = T.Canvas };
         _canvas = new PictureBox { Location = new Point(0, 0), Size = new Size(1, 1), SizeMode = PictureBoxSizeMode.AutoSize };
-        
-        ApplyTheme();
+        _scroll.Controls.Add(_canvas);
 
-        // Mouse Events for Selection
-        _canvas.MouseDown += (s, e) => {
-            _isSelecting = true;
-            _selStartIndex = GetCharIndexAt(e.X, e.Y);
-            _selEndIndex = _selStartIndex;
-            _canvas.Invalidate();
-        };
-
+        _canvas.MouseDown += (s, e) => { _selecting = true; _selStart = _selEnd = GetChar(e.X, e.Y); _canvas.Invalidate(); };
         _canvas.MouseMove += (s, e) => {
-            if (_isSelecting) {
-                _selEndIndex = GetCharIndexAt(e.X, e.Y);
-                _canvas.Invalidate();
-            }
-            // Update cursor if over text?
-            int idx = GetCharIndexAt(e.X, e.Y);
-            _canvas.Cursor = (idx >= 0) ? Cursors.IBeam : Cursors.Default;
+            if (_selecting) { _selEnd = GetChar(e.X, e.Y); _canvas.Invalidate(); }
+            _canvas.Cursor = GetChar(e.X, e.Y) >= 0 ? Cursors.IBeam : Cursors.Default;
         };
+        _canvas.MouseUp += (s, e) => _selecting = false;
+        _canvas.Paint += OnPaint;
 
-        _canvas.MouseUp += (s, e) => { _isSelecting = false; };
-        _canvas.Paint += OnCanvasPaint;
+        _scroll.MouseWheel += (s, e) => DoScroll(0, -e.Delta);
 
-        _canvasPanel.Controls.Add(_canvas);
-
-        this.Controls.Add(_canvasPanel);
-        this.Controls.Add(_toolbar);
-
-        // Events
-        _canvasPanel.MouseWheel += (s, e) => DoScroll(0, -e.Delta);
-
+        Size _lastSz = Size.Empty;
         _resizeTimer = new Timer { Interval = 150 };
-        _resizeTimer.Tick += (s, e) => {
-            _resizeTimer.Stop();
-            if (_currentPage >= 0 && _doc != IntPtr.Zero)
-            {
-                ShowPage(_currentPage);
-            }
+        _resizeTimer.Tick += (s, e) => { _resizeTimer.Stop(); if (HasDoc) ShowPage(_currentPage); };
+        _scroll.Resize += (s, e) => {
+            Center();
+            if (_scroll.Width != _lastSz.Width) { _lastSz = _scroll.Size; _resizeTimer.Stop(); _resizeTimer.Start(); }
+            else _lastSz = _scroll.Size;
         };
 
-        Size lastSize = _canvasPanel.Size;
-        _canvasPanel.Resize += (s, e) => {
-            CenterCanvas();
-            if (_canvasPanel.Width != lastSize.Width)
-            {
-                lastSize = _canvasPanel.Size;
-                _resizeTimer.Stop();
-                _resizeTimer.Start();
-            }
-            else
-            {
-                lastSize = _canvasPanel.Size;
-            }
-        };
+        Controls.Add(_scroll);
     }
 
-    private void CenterCanvas()
+    // ── Public navigation ────────────────────────────────────────────────────
+    public void PrevPage() { if (_currentPage > 0) ShowPage(_currentPage - 1); }
+    public void NextPage() { if (_currentPage < _pageCount - 1) ShowPage(_currentPage + 1); }
+
+    public void SetZoom(float z) { _zoom = Math.Max(0.1f, Math.Min(5f, z)); ShowPage(_currentPage); }
+    public void FitWidth()
     {
-        if (_canvas.Image != null)
-        {
-            int cw = _canvasPanel.ClientSize.Width;
-            int ch = _canvasPanel.ClientSize.Height;
-            int iw = _canvas.Width;
-            int ih = _canvas.Height;
-            _canvas.Location = new Point(Math.Max(0, (cw - iw) / 2), Math.Max(0, (ch - ih) / 2));
-        }
+        if (_page == IntPtr.Zero) return;
+        double pw = PdfNative.FPDF_GetPageWidth(_page);
+        int vw = _scroll.Width - 30;
+        if (vw < 100) vw = 600;
+        _zoom = (float)(vw / pw);
+        ShowPage(_currentPage);
     }
 
-    private string PromptForPassword(string text, string caption)
-    {
-        Form prompt = new Form()
-        {
-            ClientSize = new Size(400, 180),
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            Text = caption,
-            StartPosition = FormStartPosition.CenterScreen,
-            MaximizeBox = false,
-            MinimizeBox = false
-        };
-        Label textLabel = new Label() { Left = 30, Top = 30, Width = 340, Text = text, AutoSize = true };
-        TextBox textBox = new TextBox() { Left = 30, Top = 70, Width = 340, UseSystemPasswordChar = true };
-        Button confirmation = new Button() { Text = "Ok", Left = 270, Width = 100, Height = 35, Top = 120, DialogResult = DialogResult.OK };
-        Button cancel = new Button() { Text = "Cancel", Left = 150, Width = 100, Height = 35, Top = 120, DialogResult = DialogResult.Cancel };
-        prompt.Controls.Add(textLabel);
-        prompt.Controls.Add(textBox);
-        prompt.Controls.Add(confirmation);
-        prompt.Controls.Add(cancel);
-        prompt.AcceptButton = confirmation;
-        prompt.CancelButton = cancel;
-
-        string result = null;
-        if (prompt.ShowDialog() == DialogResult.OK)
-            result = textBox.Text;
-            
-        prompt.Dispose();
-        return result;
-    }
-
+    // ── File loading ─────────────────────────────────────────────────────────
     public void LoadFile(string path)
     {
-        CloseFile(); // Cleanup any existing document
-
+        CloseFile();
         try
         {
             _doc = PdfNative.FPDF_LoadDocument(path, null);
             int attempts = 0;
-
             while (_doc == IntPtr.Zero)
             {
                 uint err = PdfNative.FPDF_GetLastError();
-                if (err == 4) // Password required
+                if (err == 4)
                 {
-                    if (attempts >= 3)
-                    {
-                        MessageBox.Show("Maximum password attempts reached.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        if (LoadFailed != null) LoadFailed(this, EventArgs.Empty);
-                        return;
-                    }
-
-                    string password = PromptForPassword("Enter password for PDF:", "Password Required");
-                    if (password == null) // User cancelled
-                    {
-                        if (LoadFailed != null) LoadFailed(this, EventArgs.Empty);
-                        return;
-                    }
-
-                    _doc = PdfNative.FPDF_LoadDocument(path, password);
+                    if (attempts >= 3) { Msg("Maximum password attempts reached."); Fire(LoadFailed); return; }
+                    string pw = AskPassword();
+                    if (pw == null) { Fire(LoadFailed); return; }
+                    _doc = PdfNative.FPDF_LoadDocument(path, pw);
                     attempts++;
                 }
                 else
                 {
-                    string msg = "Failed to open document.";
-                    if (err == 1) msg = "Unknown error.";
-                    else if (err == 2) msg = "File not found or could not be opened.";
-                    else if (err == 3) msg = "File not in PDF format or corrupted.";
-                    else if (err == 5) msg = "Unsupported security scheme.";
-                    else if (err == 6) msg = "Page not found or content error.";
-
-                    MessageBox.Show(msg, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    if (LoadFailed != null) LoadFailed(this, EventArgs.Empty);
-                    return;
+                    string[] msgs = { "", "Unknown error.", "File not found.", "File corrupted.", "Password required.", "Unsupported security.", "Page error." };
+                    Msg(err < msgs.Length ? msgs[err] : "Failed to open.");
+                    Fire(LoadFailed); return;
                 }
             }
-
             _pageCount = PdfNative.FPDF_GetPageCount(_doc);
             _currentPage = 0;
-            ShowPage(_currentPage);
+            ShowPage(0);
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Error loading PDF: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            if (LoadFailed != null) LoadFailed(this, EventArgs.Empty);
-        }
+        catch (Exception ex) { Msg("Error: " + ex.Message); Fire(LoadFailed); }
     }
 
     public void CloseFile()
     {
-        CleanupCurrentPage();
-        if (_doc != IntPtr.Zero)
-        {
-            PdfNative.FPDF_CloseDocument(_doc);
-            _doc = IntPtr.Zero;
-        }
+        CleanPage();
+        if (_doc != IntPtr.Zero) { PdfNative.FPDF_CloseDocument(_doc); _doc = IntPtr.Zero; }
+        _pageCount = 0; _currentPage = 0;
+        Fire(StateChanged);
     }
 
-    private void ApplyTheme()
-    {
-        if (_isDarkMode)
-        {
-            this.BackColor = Color.FromArgb(30, 30, 30);
-            _toolbar.BackColor = Color.FromArgb(45, 45, 48);
-            _lblPage.ForeColor = Color.White;
-            _toolbar.ForeColor = Color.White;
-            _canvasPanel.BackColor = Color.FromArgb(30,30,30);
-        }
-        else
-        {
-            this.BackColor = SystemColors.Control;
-            _toolbar.BackColor = SystemColors.Control;
-            _lblPage.ForeColor = SystemColors.ControlText;
-            _toolbar.ForeColor = SystemColors.ControlText;
-            _canvasPanel.BackColor = SystemColors.Control;
-        }
-
-        if (_btnPrev != null && _btnNext != null && _btnZoomIn != null && _btnZoomOut != null)
-        {
-            foreach (Button b in new Button[] { _btnPrev, _btnNext, _btnZoomIn, _btnZoomOut })
-            {
-                if (_isDarkMode)
-                {
-                    b.BackColor = Color.FromArgb(60, 60, 60);
-                    b.ForeColor = Color.White;
-                }
-                else
-                {
-                    b.UseVisualStyleBackColor = true;
-                    b.ForeColor = SystemColors.ControlText;
-                    if (b is RoundButton) b.BackColor = SystemColors.Control;
-                }
-            }
-        }
-    }
-
-    private void CleanupCurrentPage()
-    {
-        if (_canvas.Image != null)
-        {
-            _canvas.Image.Dispose();
-            _canvas.Image = null;
-        }
-
-        if (_currentPdfBitmap != IntPtr.Zero)
-        {
-            PdfNative.FPDFBitmap_Destroy(_currentPdfBitmap);
-            _currentPdfBitmap = IntPtr.Zero;
-        }
-
-        if (_currentTextPage != IntPtr.Zero)
-        {
-            PdfNative.FPDFText_ClosePage(_currentTextPage);
-            _currentTextPage = IntPtr.Zero;
-        }
-
-        if (_currentPdfPage != IntPtr.Zero)
-        {
-            PdfNative.FPDF_ClosePage(_currentPdfPage);
-            _currentPdfPage = IntPtr.Zero;
-        }
-        
-        _selStartIndex = -1;
-        _selEndIndex = -1;
-    }
-
-    [HandleProcessCorruptedStateExceptions]
-    [SecurityCritical]
-    private void ShowPage(int index)
+    // ── Internal rendering ───────────────────────────────────────────────────
+    [HandleProcessCorruptedStateExceptions, SecurityCritical]
+    void ShowPage(int index)
     {
         if (_doc == IntPtr.Zero || index < 0 || index >= _pageCount) return;
-
-        CleanupCurrentPage();
-
+        CleanPage();
         _currentPage = index;
-        _currentPdfPage = PdfNative.FPDF_LoadPage(_doc, index);
-        if (_currentPdfPage == IntPtr.Zero) return;
+        _page = PdfNative.FPDF_LoadPage(_doc, index);
+        if (_page == IntPtr.Zero) return;
 
         try
         {
-            double pageWidth = PdfNative.FPDF_GetPageWidth(_currentPdfPage);
-            double pageHeight = PdfNative.FPDF_GetPageHeight(_currentPdfPage);
+            double pw = PdfNative.FPDF_GetPageWidth(_page);
+            double ph = PdfNative.FPDF_GetPageHeight(_page);
+            int vw = _scroll.Width - 30; if (vw < 100) vw = 600;
+            float scale = (float)(vw / pw) * _zoom;
+            int w = (int)(pw * scale), h = (int)(ph * scale);
 
-            int viewWidth = _canvasPanel.Width - 30;
-            if (viewWidth < 100) viewWidth = 600;
+            _pdfBmp = PdfNative.FPDFBitmap_Create(w, h, 1);
+            if (_pdfBmp == IntPtr.Zero) throw new Exception("Bitmap alloc failed");
 
-            float scale = (float)(viewWidth / pageWidth) * _zoomLevel;
-            int width = (int)(pageWidth * scale);
-            int height = (int)(pageHeight * scale);
+            PdfNative.FPDFBitmap_FillRect(_pdfBmp, 0, 0, w, h, unchecked((int)0xFFFFFFFF));
+            PdfNative.FPDF_RenderPageBitmap(_pdfBmp, _page, 0, 0, w, h, 0, 0x10);
 
-            _currentPdfBitmap = PdfNative.FPDFBitmap_Create(width, height, 1);
-            if (_currentPdfBitmap == IntPtr.Zero) throw new Exception("Failed to create bitmap");
+            IntPtr buf = PdfNative.FPDFBitmap_GetBuffer(_pdfBmp);
+            int stride = PdfNative.FPDFBitmap_GetStride(_pdfBmp);
 
-            PdfNative.FPDFBitmap_FillRect(_currentPdfBitmap, 0, 0, width, height, unchecked((int)0xFFFFFFFF));
-            PdfNative.FPDF_RenderPageBitmap(_currentPdfBitmap, _currentPdfPage, 0, 0, width, height, 0, 0x10);
-
-            IntPtr buffer = PdfNative.FPDFBitmap_GetBuffer(_currentPdfBitmap);
-            int stride = PdfNative.FPDFBitmap_GetStride(_currentPdfBitmap);
-            
-            if (buffer != IntPtr.Zero && stride >= width * 4)
+            if (buf != IntPtr.Zero && stride >= w * 4)
             {
                 unsafe
                 {
-                    byte* ptr = (byte*)buffer.ToPointer();
-                    for (int y = 0; y < height; y++)
+                    byte* ptr = (byte*)buf.ToPointer();
+                    for (int y = 0; y < h; y++)
                     {
-                        byte* row = ptr + (y * stride);
-                        for (int x = 0; x < width; x++)
+                        byte* row = ptr + y * stride;
+                        for (int x = 0; x < w; x++)
                         {
-                            int offset = x * 4;
-                            // Read original BGR(A)
-                            byte b = row[offset];
-                            byte g = row[offset + 1];
-                            byte r = row[offset + 2];
-                            
-                            // Swap B and R (to RGB or BGR depending on what it was vs what we want)
-                            // Original code swapped 0 and 2. 
-                            row[offset] = r;
-                            row[offset + 1] = g;
-                            row[offset + 2] = b;
+                            int o = x * 4;
+                            byte b = row[o]; row[o] = row[o + 2]; row[o + 2] = b;
                         }
                     }
                 }
             }
 
-            Bitmap wrapper = new Bitmap(width, height, stride, PixelFormat.Format32bppArgb, buffer);
-            _canvas.Image = wrapper;
+            _canvas.Image = new Bitmap(w, h, stride, PixelFormat.Format32bppArgb, buf);
         }
-        catch(Exception ex)
-        {
-             MessageBox.Show("Error rendering page: " + ex.Message);
-        }
+        catch (Exception ex) { Msg("Render error: " + ex.Message); }
 
-        // Load Text Page
+        try { _textPage = PdfNative.FPDFText_LoadPage(_page); } catch { _textPage = IntPtr.Zero; }
+
+        _scroll.AutoScrollPosition = new Point(0, 0);
+        Center();
+        Fire(StateChanged);
+        GC.Collect(); GC.WaitForPendingFinalizers();
+    }
+
+    void CleanPage()
+    {
+        if (_canvas.Image != null) { _canvas.Image.Dispose(); _canvas.Image = null; }
+        if (_pdfBmp != IntPtr.Zero) { PdfNative.FPDFBitmap_Destroy(_pdfBmp); _pdfBmp = IntPtr.Zero; }
+        if (_textPage != IntPtr.Zero) { PdfNative.FPDFText_ClosePage(_textPage); _textPage = IntPtr.Zero; }
+        if (_page != IntPtr.Zero) { PdfNative.FPDF_ClosePage(_page); _page = IntPtr.Zero; }
+        _selStart = _selEnd = -1;
+    }
+
+    void Center()
+    {
+        if (_canvas.Image == null) return;
+        int cw = _scroll.ClientSize.Width, ch = _scroll.ClientSize.Height;
+        _canvas.Location = new Point(Math.Max(0, (cw - _canvas.Width) / 2), Math.Max(0, (ch - _canvas.Height) / 2));
+    }
+
+    void DoScroll(int dx, int dy)
+    {
+        Point cur = _scroll.AutoScrollPosition;
+        int cy = Math.Abs(cur.Y), maxY = Math.Max(0, _canvas.Height - _scroll.ClientSize.Height);
+        if (dy > 0 && cy >= maxY) { NextPage(); return; }
+        if (dy < 0 && cy <= 0)   { PrevPage(); return; }
+        _scroll.AutoScrollPosition = new Point(Math.Abs(cur.X) + dx, cy + dy);
+    }
+
+    int GetChar(int x, int y)
+    {
+        if (_textPage == IntPtr.Zero || _page == IntPtr.Zero || _canvas.Image == null) return -1;
         try
         {
-            _currentTextPage = PdfNative.FPDFText_LoadPage(_currentPdfPage);
-        }
-        catch (Exception) { _currentTextPage = IntPtr.Zero; }
-
-        UpdateUI();
-        _canvasPanel.AutoScrollPosition = new Point(0, 0);
-        CenterCanvas();
-        
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-    }
-
-    private void PrevPage()
-    {
-        if (_currentPage > 0) ShowPage(_currentPage - 1);
-    }
-
-    private void NextPage()
-    {
-        if (_currentPage < _pageCount - 1) ShowPage(_currentPage + 1);
-    }
-    
-    private void UpdateUI()
-    {
-        _lblPage.Text = string.Format("{0} / {1}", _currentPage + 1, _pageCount);
-        _btnNext.Enabled = _currentPage < _pageCount - 1;
-        _btnPrev.Enabled = _currentPage > 0;
-    }
-
-    private void DoScroll(int dx, int dy)
-    {
-        Point current = _canvasPanel.AutoScrollPosition;
-        int currentY = Math.Abs(current.Y);
-        int currentX = Math.Abs(current.X);
-        
-        int maxY = Math.Max(0, _canvas.Height - _canvasPanel.ClientSize.Height);
-        
-        int y = currentY + dy;
-        int x = currentX + dx;
-        
-        if (dy > 0 && currentY >= maxY)
-        {
-             if (_currentPage < _pageCount - 1)
-             {
-                  NextPage();
-                  _canvasPanel.AutoScrollPosition = new Point(x, 0);
-             }
-             return;
-        }
-        else if (dy < 0 && currentY <= 0)
-        {
-             if (_currentPage > 0)
-             {
-                  PrevPage();
-                  _canvasPanel.AutoScrollPosition = new Point(x, short.MaxValue);
-             }
-             return;
-        }
-
-        _canvasPanel.AutoScrollPosition = new Point(x, y);
-    }
-
-    private int GetCharIndexAt(int x, int y)
-    {
-        if (_currentTextPage == IntPtr.Zero || _currentPage < 0) return -1;
-        
-        // Need current page handle to convert coords
-        // Calling LoadPage again is transient and okay for simple check or we can cache parameters
-        // Better to recover the scale/size params from the current view state
-        // We know the canvas image size.
-        if (_canvas.Image == null) return -1;
-        
-        // We use _currentPdfPage now
-        if (_currentPdfPage == IntPtr.Zero) return -1;
-
-        try
-        {
-            int width = _canvas.Image.Width;
-            int height = _canvas.Image.Height;
-            double pageX, pageY;
-            PdfNative.FPDF_DeviceToPage(_currentPdfPage, 0, 0, width, height, 0, x, y, out pageX, out pageY);
-            
-            // Tolerance? 10 pts
-            return PdfNative.FPDFText_GetCharIndexAtPos(_currentTextPage, pageX, pageY, 10, 10);
+            double px, py;
+            PdfNative.FPDF_DeviceToPage(_page, 0, 0, _canvas.Image.Width, _canvas.Image.Height, 0, x, y, out px, out py);
+            return PdfNative.FPDFText_GetCharIndexAtPos(_textPage, px, py, 10, 10);
         }
         catch { return -1; }
     }
 
-    private void OnCanvasPaint(object sender, PaintEventArgs e)
+    void OnPaint(object sender, PaintEventArgs e)
     {
-        if (_currentTextPage == IntPtr.Zero || _selStartIndex < 0 || _selEndIndex < 0) return;
-        
-        int start = Math.Min(_selStartIndex, _selEndIndex);
-        int end = Math.Max(_selStartIndex, _selEndIndex);
-        int count = end - start + 1;
-        
-        if (count <= 0) return;
-
-        if (_currentPdfPage == IntPtr.Zero) return;
-
+        if (_textPage == IntPtr.Zero || _selStart < 0 || _selEnd < 0 || _canvas.Image == null) return;
+        int s = Math.Min(_selStart, _selEnd), n = Math.Max(_selStart, _selEnd) - s + 1;
+        if (n <= 0) return;
+        int w = _canvas.Image.Width, h = _canvas.Image.Height;
         try
         {
-            int width = _canvas.Image.Width;
-            int height = _canvas.Image.Height;
-
-            int rectCount = PdfNative.FPDFText_CountRects(_currentTextPage, start, count);
-            using (Brush b = new SolidBrush(Color.FromArgb(100, 0, 0, 255)))
-            {
-                for (int i = 0; i < rectCount; i++)
+            int rc = PdfNative.FPDFText_CountRects(_textPage, s, n);
+            using (Brush b = new SolidBrush(Color.FromArgb(100, 0, 100, 255)))
+                for (int i = 0; i < rc; i++)
                 {
-                    double left, top, right, bottom;
-                    if (!PdfNative.FPDFText_GetRect(_currentTextPage, i, out left, out top, out right, out bottom))
-                        continue;
-                    
+                    double l, t, r, bv;
+                    if (!PdfNative.FPDFText_GetRect(_textPage, i, out l, out t, out r, out bv)) continue;
                     int x1, y1, x2, y2;
-                    PdfNative.FPDF_PageToDevice(_currentPdfPage, 0, 0, width, height, 0, left, top, out x1, out y1);
-                    PdfNative.FPDF_PageToDevice(_currentPdfPage, 0, 0, width, height, 0, right, bottom, out x2, out y2);
-                    
-                    Rectangle r = Rectangle.FromLTRB(Math.Min(x1, x2), Math.Min(y1, y2), Math.Max(x1, x2), Math.Max(y1, y2));
-                    e.Graphics.FillRectangle(b, r);
+                    PdfNative.FPDF_PageToDevice(_page, 0, 0, w, h, 0, l, t, out x1, out y1);
+                    PdfNative.FPDF_PageToDevice(_page, 0, 0, w, h, 0, r, bv, out x2, out y2);
+                    e.Graphics.FillRectangle(b, Rectangle.FromLTRB(Math.Min(x1,x2), Math.Min(y1,y2), Math.Max(x1,x2), Math.Max(y1,y2)));
                 }
-            }
         }
-        catch {}
+        catch { }
     }
 
-    private void CopySelection()
+    public void CopySelection()
     {
-        if (_currentTextPage == IntPtr.Zero || _selStartIndex < 0 || _selEndIndex < 0) return;
-        
-        int start = Math.Min(_selStartIndex, _selEndIndex);
-        int end = Math.Max(_selStartIndex, _selEndIndex);
-        int count = end - start + 1;
-        
-        // +2 for null terminator (unicode is 2 bytes)
-        byte[] buffer = new byte[(count + 1) * 2];
-        int written = PdfNative.FPDFText_GetText(_currentTextPage, start, count, buffer);
-        if (written > 0)
+        if (_textPage == IntPtr.Zero || _selStart < 0 || _selEnd < 0) return;
+        int s = Math.Min(_selStart, _selEnd), n = Math.Max(_selStart, _selEnd) - s + 1;
+        byte[] buf = new byte[(n + 1) * 2];
+        if (PdfNative.FPDFText_GetText(_textPage, s, n, buf) > 0)
         {
-            string text = System.Text.Encoding.Unicode.GetString(buffer);
-            // Remove null chars
-            text = text.Replace("\0", "");
-            if (!string.IsNullOrEmpty(text))
-                 Clipboard.SetText(text);
+            string txt = System.Text.Encoding.Unicode.GetString(buf).Replace("\0", "");
+            if (!string.IsNullOrEmpty(txt)) Clipboard.SetText(txt);
         }
     }
 
+    public void ApplyTheme()
+    {
+        _scroll.BackColor = T.Canvas;
+    }
 
-    // Process arrow keys for navigation if the control has focus
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        if (keyData == Keys.Right) 
+        if (keyData == Keys.Right)           { NextPage(); return true; }
+        if (keyData == Keys.Left)            { PrevPage(); return true; }
+        if (keyData == Keys.Down)            { DoScroll(0,  120); return true; }
+        if (keyData == Keys.Up)              { DoScroll(0, -120); return true; }
+        if (keyData == (Keys.Control|Keys.C)){ CopySelection(); return true; }
+        if (msg.Msg == 0x20A && (Control.ModifierKeys & Keys.Control) != 0)
         {
-            NextPage();
+            int delta = (int)((long)msg.WParam >> 16);
+            if (delta > 0) SetZoom(_zoom + 0.2f); else SetZoom(_zoom - 0.2f);
             return true;
-        }
-        if (keyData == Keys.Left) 
-        {
-            PrevPage();
-            return true;
-        }
-        if (keyData == Keys.Up)
-        {
-            DoScroll(0, -120);
-            return true;
-        }
-        if (keyData == Keys.Down)
-        {
-            DoScroll(0, 120);
-            return true;
-        }
-        if (msg.Msg == 0x20a) // WM_MOUSEWHEEL
-        {
-             if ((Control.ModifierKeys & Keys.Control) == Keys.Control)
-             {
-                 if (keyData == (Keys.Control | Keys.C))
-                 {
-                     CopySelection();
-                     return true;
-                 }
-                long wParam = msg.WParam.ToInt64(); // 64-bit safe
-                int delta = (int)(wParam >> 16);
-                if (delta > 0) _btnZoomIn.PerformClick();
-                else _btnZoomOut.PerformClick();
-                return true;
-             }
         }
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
-        {
-            if (_resizeTimer != null)
-            {
-                _resizeTimer.Dispose();
-                _resizeTimer = null;
-            }
-            CloseFile(); // Essential to release FPDF document
-        }
+        if (disposing) { if (_resizeTimer != null) _resizeTimer.Dispose(); CloseFile(); }
         base.Dispose(disposing);
     }
-}
 
-// --- Main Form Window ---
-public class MinimalPdfReader : Form
-{
-    private class MainTabControl : TabControl
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    string AskPassword()
     {
-        private bool _isDarkMode = false;
-        public bool IsDarkMode
+        using (var f = new Form { Text = "Password Required", ClientSize = new Size(420, 160), FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterScreen, MaximizeBox = false, MinimizeBox = false, AutoScaleMode = AutoScaleMode.None })
         {
-            get { return _isDarkMode; }
-            set { _isDarkMode = value; Invalidate(); }
+            var lbl = new Label { Text = "This PDF is password protected:", Left = 20, Top = 20, Width = 380, Height = 30 };
+            var tb  = new TextBox { Left = 20, Top = 60, Width = 380, Height = 24, UseSystemPasswordChar = true };
+            var ok  = new Button { Text = "OK",     Left = 205, Top = 112, Width = 90, Height = 32, DialogResult = DialogResult.OK };
+            var cn  = new Button { Text = "Cancel", Left = 305, Top = 112, Width = 95, Height = 32, DialogResult = DialogResult.Cancel };
+            f.Controls.AddRange(new Control[] { lbl, tb, ok, cn });
+            f.AcceptButton = ok; f.CancelButton = cn;
+            return f.ShowDialog() == DialogResult.OK ? tb.Text : null;
         }
-
-        public MainTabControl()
-        {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            Color bgColor = _isDarkMode ? Color.FromArgb(45, 45, 48) : SystemColors.Control;
-            e.Graphics.Clear(bgColor);
-
-            for (int i = 0; i < TabCount; i++)
-            {
-                var rect = GetTabRect(i);
-                
-                Color tabBg = _isDarkMode ? Color.FromArgb(45, 45, 48) : Color.White;
-                Color textCol = _isDarkMode ? Color.LightGray : Color.Black;
-                Color selBg = _isDarkMode ? Color.FromArgb(60, 60, 60) : SystemColors.ControlLight;
-
-                if (SelectedIndex == i)
-                {
-                    tabBg = selBg;
-                    textCol = _isDarkMode ? Color.White : Color.Black;
-                }
-
-                using (Brush b = new SolidBrush(tabBg))
-                    e.Graphics.FillRectangle(b, rect);
-
-                TextRenderer.DrawText(e.Graphics, TabPages[i].Text, this.Font, rect, textCol, TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter | TextFormatFlags.EndEllipsis);
-            }
-        }
-
-        protected override void OnPaintBackground(PaintEventArgs pevent) { }
     }
 
-    private MainTabControl _tabs;
-    private bool _isDarkMode = false;
-    private MenuStrip _menu;
+    static void Msg(string s)  { MessageBox.Show(s, "PDF Reader", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+    static void Fire(EventHandler h) { if (h != null) h(null, EventArgs.Empty); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  Main form
+// ════════════════════════════════════════════════════════════════════════════════
+public class MinimalPdfReader : Form
+{
+    ChromeTabs _tabs;
+    Panel      _toolbar;
+    Panel      _statusBar;
+    FlatBtn    _btnOpen, _btnPrev, _btnNext, _btnZoomIn, _btnZoomOut, _btnFit, _btnTheme;
+    Label      _lblPage, _lblZoom;
+    VSep       _sep1, _sep2, _sep3;
+    Label      _statLeft, _statRight;
+    Panel _centerFlow;
 
     public MinimalPdfReader()
     {
-        this.Text = "PDF Reader";
-        this.Size = new Size(1000, 700);
-        this.AutoScaleMode = AutoScaleMode.Dpi;
-        this.AllowDrop = true;
+        Text = "PDF Reader";
+        Size = new Size(1100, 750);
+        MinimumSize = new Size(600, 400);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        AllowDrop = true;
+        BackColor = T.Bg;
+        try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
-        try { this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch {}
+        try { PdfNative.FPDF_InitLibrary(); }
+        catch { MessageBox.Show("Could not initialise pdfium.dll.\nPlace pdfium.dll next to the exe or use the standalone build.", "PDF Reader", MessageBoxButtons.OK, MessageBoxIcon.Error); }
 
-        // Init PDFLib
-        try { PdfNative.FPDF_InitLibrary(); } catch { MessageBox.Show("Could not load pdfium.dll"); }
-
-        InitializeComponents();
-        InitializeEvents();
+        BuildUI();
+        WireEvents();
     }
 
-    private void InitializeComponents()
+    // ── UI construction ──────────────────────────────────────────────────────
+    void BuildUI()
     {
-        // Menu Strip
-        MenuStrip menu = new MenuStrip();
-        ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
-        ToolStripMenuItem openItem = new ToolStripMenuItem("Open...", null, (s, e) => OpenPdfDialog());
-        ToolStripMenuItem darkItem = new ToolStripMenuItem("Dark Mode", null, (s, e) => ToggleDarkMode());
-        ToolStripMenuItem exitItem = new ToolStripMenuItem("Exit", null, (s, e) => this.Close());
-        
-        fileMenu.DropDownItems.Add(openItem);
-        fileMenu.DropDownItems.Add(new ToolStripSeparator());
-        fileMenu.DropDownItems.Add(darkItem);
-        fileMenu.DropDownItems.Add(new ToolStripSeparator());
-        fileMenu.DropDownItems.Add(exitItem);
-        menu.Items.Add(fileMenu);
+        // ── Status bar ───────────────────────────────────────────────────────
+        _statusBar = new Panel { Dock = DockStyle.Bottom, Height = 26, BackColor = T.StatBg };
+        _statLeft  = MkLabel("", DockStyle.Left,  400);
+        _statRight = MkLabel("", DockStyle.Right, 250);
+        _statLeft.ForeColor = _statRight.ForeColor = Color.White;
+        _statLeft.Font = _statRight.Font = T.UiFont;
+        _statLeft.TextAlign = ContentAlignment.MiddleLeft;
+        _statRight.TextAlign = ContentAlignment.MiddleRight;
+        _statusBar.Controls.Add(_statLeft);
+        _statusBar.Controls.Add(_statRight);
+        Controls.Add(_statusBar);
 
-        ToolStripMenuItem windowMenu = new ToolStripMenuItem("Window");
-        windowMenu.DropDownOpening += (s, e) => {
-            windowMenu.DropDownItems.Clear();
-            foreach (TabPage p in _tabs.TabPages)
-            {
-                var item = new ToolStripMenuItem(p.Text, null, (sender, arg) => _tabs.SelectedTab = p);
-                 item.Checked = (_tabs.SelectedTab == p);
-                 windowMenu.DropDownItems.Add(item);
-            }
-        };
-        menu.Items.Add(windowMenu);
+        // ── Toolbar ──────────────────────────────────────────────────────────
+        _toolbar = new Panel { Dock = DockStyle.Top, Height = 64, BackColor = T.Bar };
 
-        _menu = menu;
-        
-        this.MainMenuStrip = menu;
-        this.Controls.Add(menu);
-        
-        // Tab Control
-        _tabs = new MainTabControl { 
-            Dock = DockStyle.Fill, 
-            SizeMode = TabSizeMode.Fixed, 
-            ItemSize = new Size(150, 35),
-            Font = new Font(Control.DefaultFont.FontFamily, Control.DefaultFont.Size * 1.5f)
-        };
-        _tabs.SelectedIndexChanged += (s, e) => UpdateTitle();
-        this.Controls.Add(_tabs);
-        _tabs.BringToFront(); // Ensure tabs are below menu but visible
-    }
+        const int BTN_H = 40;
+        const int GAP   = 8;
 
-    private void InitializeEvents()
-    {
-        this.DragEnter += (s, e) => {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
-        };
+        _btnOpen   = new FlatBtn("  Open  ", 88, BTN_H);
+        _btnPrev   = new FlatBtn("‹ Prev",  88, BTN_H);
+        _btnNext   = new FlatBtn("Next ›",  88, BTN_H);
+        _btnZoomOut= new FlatBtn("−",       36, BTN_H);
+        _btnZoomIn = new FlatBtn("+",       36, BTN_H);
+        _btnFit    = new FlatBtn("Fit",     56, BTN_H);
+        _btnTheme  = new FlatBtn("Dark",    60, BTN_H);
+        _btnTheme.Toggled = T.Dark;
 
-        this.DragDrop += (s, e) => {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files != null)
-            {
-                foreach (var f in files)
-                {
-                    if (f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-                    {
-                        AddTab(f);
-                    }
-                }
-            }
-        };
-    }
+        _lblPage   = new Label { Text = "—",    Size = new Size(100, BTN_H), TextAlign = ContentAlignment.MiddleCenter, ForeColor = T.Txt, Font = T.UiBig, BackColor = Color.Transparent };
+        _lblZoom   = new Label { Text = "100%", Size = new Size( 68, BTN_H), TextAlign = ContentAlignment.MiddleCenter, ForeColor = T.Txt, Font = T.UiBig, BackColor = Color.Transparent };
+        _sep1      = new VSep { Size = new Size(12, BTN_H) };
+        _sep2      = new VSep { Size = new Size(12, BTN_H) };
+        _sep3      = new VSep { Visible = false };
 
-    private void OpenPdfDialog()
-    {
-        using (OpenFileDialog ofd = new OpenFileDialog { Filter = "PDF Files|*.pdf", Multiselect = true })
+        // Lay out the center strip on a plain Panel — no layout manager, no surprises
+        Control[] strip = { _btnPrev, _lblPage, _btnNext, _sep1, _btnZoomOut, _lblZoom, _btnZoomIn, _sep2, _btnFit };
+        int stripW = 0;
+        foreach (Control c in strip) stripW += c.Width + GAP;
+        stripW -= GAP; // no trailing gap
+
+        _centerFlow = new Panel { Size = new Size(stripW, BTN_H), BackColor = Color.Transparent };
+        int cx = 0;
+        foreach (Control c in strip)
         {
-            if (ofd.ShowDialog() == DialogResult.OK)
-            {
-                foreach (var f in ofd.FileNames)
-                {
-                    AddTab(f);
-                }
-            }
+            c.Location = new Point(cx, 0);
+            _centerFlow.Controls.Add(c);
+            cx += c.Width + GAP;
         }
+
+        // Place open on the left, theme on the right, centre strip exactly centred
+        int topV = (_toolbar.Height - BTN_H) / 2;
+        _btnOpen.Location  = new Point(12, topV);
+        _btnTheme.Anchor   = AnchorStyles.Right | AnchorStyles.Top;
+        _btnTheme.Location = new Point(_toolbar.Width - _btnTheme.Width - 12, topV);
+        _centerFlow.Location = new Point((_toolbar.Width - _centerFlow.Width) / 2, topV);
+
+        _toolbar.Controls.Add(_centerFlow);
+        _toolbar.Controls.Add(_btnOpen);
+        _toolbar.Controls.Add(_btnTheme);
+        _toolbar.Resize += (s, e) => {
+            int tv = (_toolbar.Height - BTN_H) / 2;
+            _centerFlow.Location = new Point((_toolbar.Width - _centerFlow.Width) / 2, tv);
+            _btnTheme.Location   = new Point(_toolbar.Width - _btnTheme.Width - 12, tv);
+        };
+
+        Controls.Add(_toolbar);
+
+        // ── Tab control ──────────────────────────────────────────────────────
+        _tabs = new ChromeTabs { Dock = DockStyle.Fill };
+        _tabs.SelectedIndexChanged += (s, e) => { BindActive(); UpdateStatus(); };
+        Controls.Add(_tabs);
+
+        _tabs.BringToFront();
+        UpdateToolbarEnabled();
     }
 
-    private void AddTab(string filePath)
+    Label MkLabel(string text, DockStyle dock, int w)
     {
-        TabPage page = new TabPage(Path.GetFileName(filePath));
-        page.Padding = new Padding(0);
-        
-        PdfViewer viewer = new PdfViewer();
-        if (_isDarkMode) viewer.IsDarkMode = true;
-        
-        page.Controls.Add(viewer); // viewer is Dock.Fill by default constructor
-        
+        return new Label { Text = text, Dock = dock, Width = w, BackColor = Color.Transparent, Font = T.UiFont };
+    }
+
+    void WireEvents()
+    {
+        _btnOpen.Click    += (s, e) => OpenDialog();
+        _btnPrev.Click    += (s, e) => { var v = Active(); if (v != null) v.PrevPage(); };
+        _btnNext.Click    += (s, e) => { var v = Active(); if (v != null) v.NextPage(); };
+        _btnZoomIn.Click  += (s, e) => { var v = Active(); if (v != null) v.SetZoom(v.ZoomLevel + 0.2f); };
+        _btnZoomOut.Click += (s, e) => { var v = Active(); if (v != null) v.SetZoom(v.ZoomLevel - 0.2f); };
+        _btnFit.Click     += (s, e) => { var v = Active(); if (v != null) v.FitWidth(); };
+        _btnTheme.Click   += (s, e) => ToggleTheme();
+
+        DragEnter += (s, e) => { if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy; };
+        DragDrop  += (s, e) => {
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files != null) foreach (var f in files) if (f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)) AddTab(f);
+        };
+    }
+
+    // ── Active viewer helpers ────────────────────────────────────────────────
+    PdfViewer _boundViewer;
+
+    PdfViewer Active()
+    {
+        if (_tabs.SelectedTab == null) return null;
+        foreach (Control c in _tabs.SelectedTab.Controls)
+        { PdfViewer pv = c as PdfViewer; if (pv != null) return pv; }
+        return null;
+    }
+
+    void BindActive()
+    {
+        if (_boundViewer != null) _boundViewer.StateChanged -= OnViewerState;
+        _boundViewer = Active();
+        if (_boundViewer != null) _boundViewer.StateChanged += OnViewerState;
+        UpdateToolbarEnabled();
+        UpdateStatus();
+    }
+
+    void OnViewerState(object s, EventArgs e) { UpdateToolbarEnabled(); UpdateStatus(); }
+
+    void UpdateToolbarEnabled()
+    {
+        var v = Active();
+        bool has = v != null && v.HasDoc;
+        _btnPrev.Enabled = has && v.CurrentPage > 0;
+        _btnNext.Enabled = has && v.CurrentPage < v.PageCount - 1;
+        _btnZoomIn.Enabled = _btnZoomOut.Enabled = _btnFit.Enabled = has;
+        _lblPage.Text = has ? string.Format("{0} / {1}", v.CurrentPage + 1, v.PageCount) : "—";
+        _lblZoom.Text = has ? string.Format("{0}%", (int)(v.ZoomLevel * 100)) : "—";
+        _lblPage.ForeColor = _lblZoom.ForeColor = T.Txt;
+    }
+
+    void UpdateStatus()
+    {
+        var v = Active();
+        if (v == null || !v.HasDoc) { _statLeft.Text = ""; _statRight.Text = ""; return; }
+        string name = _tabs.SelectedTab != null ? _tabs.SelectedTab.Text : "";
+        _statLeft.Text  = "  " + name;
+        _statRight.Text = string.Format("Page {0} / {1}   Zoom {2}%  ", v.CurrentPage + 1, v.PageCount, (int)(v.ZoomLevel * 100));
+    }
+
+    // ── Open / tabs ──────────────────────────────────────────────────────────
+    void OpenDialog()
+    {
+        using (var ofd = new OpenFileDialog { Filter = "PDF Files|*.pdf", Multiselect = true })
+            if (ofd.ShowDialog() == DialogResult.OK)
+                foreach (var f in ofd.FileNames) AddTab(f);
+    }
+
+    void AddTab(string path)
+    {
+        var page   = new TabPage(Path.GetFileName(path)) { Padding = new Padding(0), BackColor = T.Bg };
+        var viewer = new PdfViewer();
+        viewer.StateChanged += (s, e) => { UpdateToolbarEnabled(); UpdateStatus(); };
+        viewer.LoadFailed   += (s, e) => { _tabs.TabPages.Remove(page); viewer.Dispose(); };
+        page.Controls.Add(viewer);
         _tabs.TabPages.Add(page);
         _tabs.SelectedTab = page;
-        UpdateTitle();
-
-        // Load content
-        viewer.LoadFailed += (s, e) => {
-             // Close this tab
-             _tabs.TabPages.Remove(page);
-             viewer.Dispose();
-        };
-
-        viewer.LoadFile(filePath);
-        if (_tabs.TabPages.Contains(page)) // Only focus if not closed
-            viewer.Focus();
+        BindActive();
+        viewer.LoadFile(path);
+        if (_tabs.TabPages.Contains(page)) viewer.Focus();
     }
 
-    private void ToggleDarkMode()
+    // ── Theme ────────────────────────────────────────────────────────────────
+    void ToggleTheme()
     {
-        _isDarkMode = !_isDarkMode;
+        T.Dark = !T.Dark;
+        _btnTheme.Toggled = T.Dark;
+        _btnTheme.Text = T.Dark ? "Dark" : "Light";
         ApplyTheme();
     }
 
-    private void ApplyTheme()
+    void ApplyTheme()
     {
-        if (_isDarkMode)
+        BackColor = T.Bg;
+        _toolbar.BackColor = T.Bar;
+        _statusBar.BackColor = T.StatBg;
+        _tabs.ApplyTheme();
+        _tabs.BackColor = T.TabBg;
+
+        foreach (Control c in _toolbar.Controls)
         {
-            this.BackColor = Color.FromArgb(30, 30, 30);
-            _tabs.BackColor = Color.FromArgb(30, 30, 30);
-            _menu.BackColor = Color.FromArgb(45, 45, 48);
-            _menu.ForeColor = Color.White;
-        }
-        else
-        {
-             this.BackColor = SystemColors.Control;
-             _tabs.BackColor = SystemColors.Control;
-             _menu.BackColor = SystemColors.MenuBar;
-             _menu.ForeColor = SystemColors.MenuText;
+            { FlatBtn b = c as FlatBtn; if (b != null) b.Refresh2(); }
+            { Label l = c as Label; if (l != null) { l.BackColor = Color.Transparent; l.ForeColor = T.Txt; } }
+            Panel pnl = c as Panel;
+            if (pnl != null)
+            {
+                pnl.BackColor = Color.Transparent;
+                foreach (Control cc in pnl.Controls)
+                {
+                    { FlatBtn b2 = cc as FlatBtn; if (b2 != null) b2.Refresh2(); }
+                    { VSep v2 = cc as VSep; if (v2 != null) v2.Refresh2(); }
+                    { Label l2 = cc as Label; if (l2 != null) l2.ForeColor = T.Txt; }
+                }
+            }
         }
 
-        _tabs.IsDarkMode = _isDarkMode;
+        _lblPage.ForeColor = _lblZoom.ForeColor = T.Txt;
 
         foreach (TabPage p in _tabs.TabPages)
         {
-            p.BackColor = _isDarkMode ? Color.FromArgb(30, 30, 30) : Color.White;
+            p.BackColor = T.Bg;
             foreach (Control c in p.Controls)
-            {
-                PdfViewer v = c as PdfViewer;
-                if (v != null) v.IsDarkMode = _isDarkMode;
-            }
+            { PdfViewer pv = c as PdfViewer; if (pv != null) pv.ApplyTheme(); }
         }
-        _tabs.Invalidate(); // Redraw tabs
-    }
-    
-    private void UpdateTitle()
-    {
-        string title = "PDF Reader";
-        if (_tabs.SelectedTab != null)
-        {
-            title += " - " + _tabs.SelectedTab.Text;
-        }
-        this.Text = title;
+
+        UpdateToolbarEnabled();
     }
 
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData == (Keys.Control | Keys.O)) { OpenDialog(); return true; }
+        if (keyData == (Keys.Control | Keys.W)) { if (_tabs.SelectedIndex >= 0) _tabs.RequestClose(_tabs.SelectedIndex); return true; }
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    // ── Shutdown ─────────────────────────────────────────────────────────────
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
-        // Dispose all viewers
         foreach (TabPage p in _tabs.TabPages)
-        {
             foreach (Control c in p.Controls)
-            {
-                PdfViewer v = c as PdfViewer;
-                if (v != null) v.Dispose();
-            }
-        }
-
+            { PdfViewer pv = c as PdfViewer; if (pv != null) pv.Dispose(); }
         PdfNative.FPDF_DestroyLibrary();
         base.OnFormClosed(e);
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    //  Entry point
+    // ════════════════════════════════════════════════════════════════════════
     [STAThread]
     static void Main()
     {
+        ExtractPdfium();
         if (Environment.OSVersion.Version.Major >= 6) PdfNative.SetProcessDPIAware();
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new MinimalPdfReader());
+    }
+
+    // Extract embedded pdfium.dll (standalone build only).
+    // Falls back silently if the resource is not embedded (normal build).
+    static void ExtractPdfium()
+    {
+        try
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            using (var stream = asm.GetManifestResourceStream("pdfium.dll"))
+            {
+                if (stream == null) return; // not embedded — external dll in use
+                string dir  = Path.Combine(Path.GetTempPath(), "PdfReader_libs");
+                string dest = Path.Combine(dir, "pdfium.dll");
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                if (!File.Exists(dest))
+                {
+                    using (var fs = File.Create(dest)) stream.CopyTo(fs);
+                }
+                PdfNative.LoadLibraryW(dest); // pre-load so DllImport finds it
+            }
+        }
+        catch { }
     }
 }
